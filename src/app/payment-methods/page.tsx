@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import { isLoggedIn } from '@/lib/auth'
@@ -18,7 +18,9 @@ export default function PaymentMethodsPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [form, setForm] = useState({ number: '', expiry: '', cvv: '', name: '' })
 
-  if (!isLoggedIn()) { router.push('/login?redirect=/payment-methods'); return null }
+  useEffect(() => {
+    if (!isLoggedIn()) { router.push('/login?redirect=/payment-methods'); return }
+  }, [])
 
   return (
     <div className="min-h-screen bg-background">

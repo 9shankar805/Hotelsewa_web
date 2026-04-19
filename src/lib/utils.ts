@@ -23,15 +23,40 @@ export function getStatusColor(status: string): string {
 
 export function parseHotelImage(images: unknown): string {
   const fallback = 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=600'
+
+  function fixUrl(url: string): string {
+    if (!url) return fallback
+    // Fix broken storage prefix: "http://server/storage/https://..." → "https://..."
+    const match = url.match(/https?:\/\/[^/]+\/storage\/(https?:\/\/.+)/)
+    if (match) return match[1]
+    return url
+  }
+
   if (!images) return fallback
+
   if (typeof images === 'string') {
-    if (images.startsWith('http')) return images
+    // Try JSON parse first (could be a JSON array string)
     try {
       const arr = JSON.parse(images)
-      if (Array.isArray(arr) && arr[0]) return arr[0]
-    } catch { /* ignore */ }
+      if (Array.isArray(arr) && arr[0]) return fixUrl(String(arr[0]))
+    } catch { /* not JSON */ }
+    if (images.startsWith('http')) return fixUrl(images)
+    return fallback
   }
-  if (Array.isArray(images) && images[0]) return String(images[0])
+
+  if (Array.isArray(images)) {
+    const first = images[0]
+    if (!first) return fallback
+    if (typeof first === 'string') return fixUrl(first)
+    // Could be an object with url/image field
+    if (typeof first === 'object' && first !== null) {
+      const obj = first as Record<string, unknown>
+      const url = String(obj.url || obj.image || obj.src || '')
+      if (url) return fixUrl(url)
+    }
+    return fallback
+  }
+
   return fallback
 }
 

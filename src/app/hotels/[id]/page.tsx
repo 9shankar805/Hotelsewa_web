@@ -121,11 +121,29 @@ export default function HotelDetailPage() {
   )
 
   const images: string[] = (() => {
+    function fixUrl(url: string): string {
+      const match = url.match(/https?:\/\/[^/]+\/storage\/(https?:\/\/.+)/)
+      return match ? match[1] : url
+    }
     const raw = hotel.images || hotel.image
-    if (Array.isArray(raw)) return raw.map(String)
+    if (Array.isArray(raw)) return raw.map(s => fixUrl(String(s))).filter(Boolean)
     if (typeof raw === 'string') {
-      try { const p = JSON.parse(raw); if (Array.isArray(p)) return p.map(String) } catch { /* ignore */ }
-      return [raw]
+      try {
+        const p = JSON.parse(raw)
+        if (Array.isArray(p)) return p.map(s => fixUrl(String(s))).filter(Boolean)
+      } catch { /* ignore */ }
+      return [fixUrl(raw)]
+    }
+    // Also try gallery images as fallback
+    const gallery = hotel.gallery as Array<{ items?: Array<{ url?: string }> }> | undefined
+    if (Array.isArray(gallery)) {
+      const galleryUrls: string[] = []
+      gallery.forEach(cat => {
+        cat.items?.forEach(item => {
+          if (item.url) galleryUrls.push(fixUrl(item.url))
+        })
+      })
+      if (galleryUrls.length > 0) return galleryUrls
     }
     return [parseHotelImage(raw)]
   })()
@@ -255,7 +273,7 @@ export default function HotelDetailPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-semibold text-dark-gray">{String(room.name || room.type)}</h4>
-                          {room.hourly_available && (
+                          {!!room.hourly_available && (
                             <span className="text-xs bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-lg">⏰ Hourly</span>
                           )}
                         </div>
@@ -263,20 +281,20 @@ export default function HotelDetailPage() {
                         <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
                           <div className="flex items-center gap-3">
                             <span className="font-bold text-primary text-lg">₹{Number(room.base_price || room.price || 0).toLocaleString()}<span className="text-xs text-gray-400 font-normal">/night</span></span>
-                            {room.hourly_available && room.hourly_price && (
+                            {!!(room.hourly_available && room.hourly_price) && (
                               <span className="text-sm text-blue-600 font-semibold">₹{Number(room.hourly_price).toLocaleString()}<span className="text-xs text-blue-400 font-normal">/hr</span></span>
                             )}
                           </div>
                           <div className="flex gap-2">
                             <button onClick={() => { setBookingType('nightly'); document.querySelector('.sticky')?.scrollIntoView({ behavior: 'smooth' }) }}
                               className="btn-primary text-xs py-2 px-3">Book Night</button>
-                            {room.hourly_available && (
+                            {!!room.hourly_available && (
                               <button onClick={() => { setBookingType('hourly'); setHourlyRoomId(String(room.id)); document.querySelector('.sticky')?.scrollIntoView({ behavior: 'smooth' }) }}
                                 className="text-xs py-2 px-3 bg-blue-50 text-blue-600 font-semibold rounded-xl hover:bg-blue-100 transition-colors">Book Hour</button>
                             )}
                           </div>
                         </div>
-                        {room.hourly_available && room.min_hours && (
+                        {!!(room.hourly_available && room.min_hours) && (
                           <p className="text-xs text-gray-400 mt-1">Hourly: min {String(room.min_hours)}h – max {String(room.max_hours)}h</p>
                         )}
                       </div>

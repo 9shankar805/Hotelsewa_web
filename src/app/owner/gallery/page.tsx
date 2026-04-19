@@ -18,10 +18,22 @@ export default function GalleryPage() {
       const res = await ownerApi.getGallery()
       const raw = res.data?.data
       const imgs: string[] = []
+
+      function fixUrl(url: string): string {
+        const match = url.match(/https?:\/\/[^/]+\/storage\/(https?:\/\/.+)/)
+        return match ? match[1] : url
+      }
+
       if (Array.isArray(raw)) raw.forEach(item => {
-        if (typeof item === 'string') imgs.push(item)
-        else if (item?.url) imgs.push(String(item.url))
-        else if (item?.image) imgs.push(String(item.image))
+        if (typeof item === 'string') imgs.push(fixUrl(item))
+        else if (item?.url) imgs.push(fixUrl(String(item.url)))
+        else if (item?.image) imgs.push(fixUrl(String(item.image)))
+        // Handle gallery category structure: { category, items: [{url}] }
+        else if (item?.items && Array.isArray(item.items)) {
+          item.items.forEach((sub: Record<string, unknown>) => {
+            if (sub?.url) imgs.push(fixUrl(String(sub.url)))
+          })
+        }
       })
       setImages(imgs)
     } catch {
